@@ -5,7 +5,6 @@ use DBI;
 use Getopt::Long;
 use Data::Dumper;
 
-
 $Data::Dumper::Indent   = 2;
 $Data::Dumper::Sortkeys = 1;
 $Data::Dumper::Deepcopy = 1;
@@ -43,18 +42,26 @@ sub get_options {
     push @{$options->{$name}}, split q{,}, $val;
   };
 
-
   GetOptions($options,
     'directories=s@' => $splitter,
     'db',
     'dnadb',
+    'rw_user=s',
+    'rw_pass=s',
+    'ro_user=s',
+    'species=s',
+    'db_name=s',
+    'db_host=s',
+    'db_port=s',
+    'dnadb_name=s',
+    'dnadb_host=s',
+    'dnadb_port=s',
   );
 # Always test those
   push(@{$options->{directories}},'/tmp');
   push(@{$options->{directories}},$ENV{HOME});
   return $options;
 }
-
 
 sub test_directories {
   my ($options) = @_;
@@ -69,26 +76,25 @@ sub test_directories {
   }
 }
 
-
-
 # Creates DB connections
 sub connect_db {
   my ($options) = @_;
  
   if($options->{db}){
     $options->{db_adaptor} = Bio::EnsEMBL::DBSQL::DBAdaptor->new (
-    -user     => $ENV{DNADB_USER},
-      -dbname   => $ENV{DB_NAME},
-      -host     => $ENV{DB_HOST},
-      -port     => $ENV{DB_PORT},
-      -species  => $ENV{DB_SPECIES},
+      -user     => $options->{rw_user},
+      -pass     => $options->{rw_pass},
+      -dbname   => $options->{db_name},
+      -host     => $options->{db_host},
+      -port     => $options->{db_port},
+      -species  => $options->{species},
       -reconnect_when_connection_lost => 1,
     );
     ref($options->{db_adaptor}) eq 'Bio::EnsEMBL::DBSQL::DBAdaptor' ?  say FH_LOG "Connected to DB" : say FH_LOG  "Could not connect to DB";
 
     $options->{dbc} = $options->{db_adaptor}->dbc();
     my $helper = Bio::EnsEMBL::Utils::SqlHelper->new( -DB_CONNECTION => $options->{dbc} );
-# Error message from DBD will still be printed, check how to pass PrintError=>0 when creating the dbc
+    # Error message from DBD will still be printed, check how to pass PrintError=>0 when creating the dbc
     eval{
       $helper->execute_simple( -SQL => 'drop database if exists tj_createdb_test', );
       $helper->execute_simple( -SQL => 'create database tj_createdb_test', );
@@ -100,11 +106,11 @@ sub connect_db {
   }  
     
   $options->{dnadb_adaptor} = Bio::EnsEMBL::DBSQL::DBAdaptor->new (
-    -user     => $ENV{DNADB_USER},
-    -dbname   => $ENV{DNADB_NAME},
-    -host     => $ENV{DNADB_HOST},
-    -port     => $ENV{DNADB_PORT},
-    -species  => $ENV{DNADB_SPECIES},
+    -user     => $options->{ro_user},
+    -dbname   => $options->{dnadb_name},
+    -host     => $options->{dnadb_host},
+    -port     => $options->{dnadb_port},
+    -species  => $options->{species},
     -reconnect_when_connection_lost => 1,
   );
   ref($options->{dnadb_adaptor}) eq 'Bio::EnsEMBL::DBSQL::DBAdaptor' ?  say FH_LOG "Connected to DNADB" : say FH_LOG "Could not connect to DNADB";
@@ -116,8 +122,5 @@ my $options = get_options();
 connect_db($options);
 test_directories($options);
 
-
 say STDOUT "Testing STDOUT";
 say STDERR "Testing STDERR";
-
-
