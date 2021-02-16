@@ -1,14 +1,16 @@
-FROM alpine:3.12 AS builder
-RUN apk update
-RUN apk upgrade
-RUN apk add curl libarchive-tools gcc make libc-dev zlib-dev
-RUN curl -OL https://downloads.sourceforge.net/project/bio-bwa/bwa-0.7.17.tar.bz2
-RUN bsdtar xf bwa-0.7.17.tar.bz2
-WORKDIR /bwa-0.7.17
+FROM alpine:3.13 AS builder
+RUN apk update && \
+    apk upgrade
+
+RUN apk add git ca-certificates
+RUN git clone --depth 1 https://github.com/lh3/bwa.git
+RUN apk add make gcc libc-dev zlib-dev
+    #apk add curl libarchive-tools gcc g++ make libc-dev zlib-dev git ca-certificates
+WORKDIR /bwa
 RUN make
 
-FROM alpine:3.12
-COPY --from=builder /bwa-0.7.17/bwa /usr/local/bin
+FROM alpine:3.13
+COPY --from=builder /bwa/bwa /usr/local/bin
 WORKDIR /mnt
 ENTRYPOINT ["bwa"]
 CMD []
